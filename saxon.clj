@@ -1,7 +1,14 @@
-(ns saxon
+; Copyright (c) December 2008, Perry Trolard, Washington University in Saint Louis.
+; 
+; The use and distribution terms for this software are covered by the MIT 
+; Licence (http://opensource.org/licenses/mit-license.php), which can be found 
+; in the file MIT.txt at the root of this distribution. Use of the software 
+; counts as agreeing to be bound by the terms of this license. You must not 
+; remove this notice from this software.
 
-;; Saxon Clojure wrapper
-;; Requires the saxon9.jar & the saxon9-s9api.jar on classpath
+(ns saxon
+   ; Saxon Clojure wrapper
+   ; Requires the saxon9.jar & the saxon9-s9api.jar on classpath
 
     (:import 
         (java.io File)
