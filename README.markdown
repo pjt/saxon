@@ -7,13 +7,12 @@ Dependencies
 ------------
 
 You must have the saxon9.jar & the saxon9-s9api.jar on your classpath. (Latest
-versions available at [the Sourceforge download area][sfdl].)
+versions available at the Sourceforge [download area][sfdl].)
 
 Use
 ---
 
-You can compile XML strings or files into nodes in memory ("XdmNodes" in 
-Saxon-land), as in
+You can compile XML strings or files into nodes in memory ("XdmNodes"), as in
 
     user=> (use 'saxon)
     nil
@@ -24,7 +23,6 @@ Saxon-land), as in
        <word>Hi</word>
        <punc>!</punc>
     </doc>>
-    user=>
 
 `compile-file` reads an XML document from the filesystem into a document node.
 
@@ -32,7 +30,7 @@ To process nodes, use the functions returned from `compile-xslt` & `compile-xpat
 `compile-xpath` returns a lazy sequence of matching nodes (the XPath evaluation is
 done lazily in Saxon, as well).
 
-    user=> (compile-xslt "/Users/pjt/all_docs/software/xslt/strip.xsl")
+    user=> (compile-xslt "strip.xsl")
     #<saxon$compile_xslt__53$fn__55 saxon$compile_xslt__53$fn__55@51d098b7>
     user=> ((compile-xslt "strip.xsl") node1)
     #<XdmNode Hi!>
@@ -54,7 +52,7 @@ done lazily in Saxon, as well).
 
 In addition to the compilation & processing functions, there are some helper
 functions like `parent-node`, `node-kind`, etc., as well as node-kind predicates
-like `document?`, `element?`, etc.. There is also `node-path`, which returns the
+like `document?`, `element?`, etc. There is also `node-path`, which returns the
 XPath to the passed node:
 
     user=> (map node-path ((compile-xpath "//punc") node1))
