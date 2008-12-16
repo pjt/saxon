@@ -51,7 +51,7 @@
     "Makes XdmItems Clojure-friendly. A Saxon XdmItem is either 
     an atomic value (number, string, URI) or a node. 
     
-    This function returns a sequence, turnng XdmAtomicValues into 
+    This function returns a sequence, turning XdmAtomicValues into 
     their corresponding Java datatypes (Strings, the numeric types),
     leaving XdmNodes as nodes."
     [sel]
