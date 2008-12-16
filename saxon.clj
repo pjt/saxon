@@ -14,10 +14,12 @@
         (java.io File)
         (javax.xml.transform.stream StreamSource)
         (net.sf.saxon.s9api 
+            Axis
             Processor 
             Serializer 
             Serializer$Property
             XPathCompiler
+            XPathSelector
             XdmDestination
             XdmValue
             XdmItem
@@ -45,27 +47,16 @@
     [#^XdmItem val]
     (.isAtomicValue val))
 
-(defn- unwrap-xdm-val
-    "Makes an XdmValue Clojure-friendly. A Saxon value 
-    (XdmValue) is a sequence of zero or more items, where 
-    an item is either an atomic value (number, string, 
-    URI) or a node. 
+(defn- unwrap-xdm-items
+    "Makes XdmItems Clojure-friendly. A Saxon XdmItem is either 
+    an atomic value (number, string, URI) or a node. 
     
-    This function makes sequences greater than one into 
-    Clojure seqs, and turns XdmAtomicValues into their
-    corresponding Java datatypes (Strings, the numeric
-    types)."
-    [#^XdmValue val]
-    (let    
-        [size   (.size val)
-         unwrap-atom #(if (atomic? %) (.getValue #^XdmAtomicValue %) %)]
-        (cond 
-            (= size 0)
-                nil
-            (= size 1)
-                (unwrap-atom (first val))
-            :default
-                (map unwrap-atom val))))
+    This function returns a sequence, turnng XdmAtomicValues into 
+    their corresponding Java datatypes (Strings, the numeric types),
+    leaving XdmNodes as nodes."
+    [sel]
+    (map #(if (atomic? %) (.getValue #^XdmAtomicValue %) %)
+      sel))
 
 ;;
 ;; Public functions
@@ -144,7 +135,7 @@
 
         (fn [#^XdmNode xml] 
             (.setContextItem selector xml)
-            (unwrap-xdm-val (.evaluate selector)))))
+            (unwrap-xdm-items selector))))
 
 ;; Node functions
 
@@ -184,6 +175,29 @@
     "Returns XPath to node."
     [#^XdmNode nd]
     (Navigator/getPath (.getUnderlyingNode nd)))
+
+;(def #^{:private true} 
+;    axis-map
+;        {:ancestor            Axis/ANCESTOR           
+;         :ancestor-or-self    Axis/ANCESTOR_OR_SELF   
+;         :attribute           Axis/ATTRIBUTE          
+;         :child               Axis/CHILD              
+;         :descendant          Axis/DESCENDANT         
+;         :descendant-or-self  Axis/DESCENDANT_OR_SELF 
+;         :following           Axis/FOLLOWING          
+;         :following-sibling   Axis/FOLLOWING_SIBLING  
+;         :parent              Axis/PARENT             
+;         :preceding           Axis/PRECEDING          
+;         :preceding-sibling   Axis/PRECEDING_SIBLING  
+;         :self                Axis/SELF               
+;         :namespace           Axis/NAMESPACE})
+;
+;(defn axis-seq
+;   "Returns sequences of nodes on given axis."
+;   ([#^XdmNode nd axis]
+;    (.axisIterator nd #^Axis (axis-map axis)))
+;   ([#^XdmNode nd axis name]
+;    (.axisIterator nd #^Axis (axis-map axis) (QName. #^String name))))
 
 ; Node-kind predicates
 
