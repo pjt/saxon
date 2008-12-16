@@ -23,6 +23,12 @@ You can compile XML strings or files into nodes in memory ("XdmNodes"), as in
        <word>Hi</word>
        <punc>!</punc>
     </doc>>
+    user=> (println (str node1))
+    <doc>
+       <word>Hi</word>
+       <punc>!</punc>
+    </doc>
+    nil
 
 `compile-file` reads an XML document from the filesystem into a document node.
 
