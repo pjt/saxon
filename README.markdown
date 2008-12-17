@@ -1,7 +1,8 @@
 Saxon
 =====
 
-Clojure wrapper for Michael Kay's [Saxon][saxonica] XSLT-processing library. 
+Simple Clojure wrapper for Michael Kay's [Saxon XSLT and XQuery Processor][saxonica] (from
+Saxonica Limited). 
 
 Dependencies
 ------------
