@@ -16,6 +16,6 @@
                     (map (compile-xpath (last args)) 
                                 (map compile-file (butlast args))))]
         (if (coll? result)
-            (println (str-join "\n" (flatten result)))
+            (println (str-join "\n" (flatten (remove nil? result))))
             (println (str result)))))
             
