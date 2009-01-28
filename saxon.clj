@@ -11,8 +11,9 @@
    ; Requires the saxon9.jar & the saxon9-s9api.jar on classpath
 
     (:import 
-        (java.io File)
+        (java.io File InputStream Reader StringReader)
         (javax.xml.transform.stream StreamSource)
+        (javax.xml.transform Source)
         (net.sf.saxon.s9api 
             Axis
             Processor 
@@ -26,6 +27,8 @@
             XdmNode
             XdmNodeKind
             XdmAtomicValue
+            XQueryCompiler
+            XQueryEvaluator
             QName)
         (net.sf.saxon.om Navigator NodeInfo)))
 
@@ -39,6 +42,24 @@
     Creates & defs the Processor if not already created."
     []
     (defonce #^{:private true} *p* (Processor. false)) *p*)
+
+(defmulti xml-source class)
+  (defmethod xml-source File
+    [f]
+    (StreamSource. #^File f))
+  (defmethod xml-source InputStream
+    [i]
+    (StreamSource. #^InputStream i))
+  (defmethod xml-source Reader
+    [r]
+    (StreamSource. #^Reader r))
+  (defmethod xml-source String
+    [s]
+    (StreamSource. (StringReader. #^String s)))
+  (defmethod xml-source XdmNode
+    [nd]
+    (.asSource #^XdmNode nd))
+
 
 ;; Well, except this is public -- maybe doesn't need to be
 (defn atomic?
@@ -69,13 +90,13 @@
 (defn compile-file
     "Compiles XML file into an XdmNode, the Saxon 
     currency for in-memory tree representation. Takes
-    pathname or java.io.File."
+    File, InputStream, Reader; if given String, converts
+    it to File."
     [f]
-    (.. #^Processor (get-proc) (newDocumentBuilder) 
-                    (build (if (string? f)
-                                (File. #^String f)
-                                #^File f))))
-    ;(StreamSource. (File. path)))
+    (let [f     (when (string? f) (File. #^String f))
+          strm  (xml-source f)]
+      (.. #^Processor (get-proc) (newDocumentBuilder) 
+                      (build #^Source strm))))
 
 (defn compile-string
     "Compiles XML string into an XdmNode, the Saxon currency 
@@ -83,21 +104,16 @@
     optionally, java.io.InputStream or java.io.Reader."
     [s]
     (.. #^Processor (get-proc) (newDocumentBuilder) 
-                        (build (StreamSource. 
-                                 (if (string? s) 
-                                        (java.io.StringReader. #^String s)
-                                        s)))))
+                        (build #^Source (xml-source s))))
 
 (defn compile-xslt
-    "Compiles stylesheet (given as pathname or java.io.File), 
-    returns function that applies it to compiled doc or node."
+    "Compiles stylesheet (from anything convertible to javax.
+    xml.transform.Source, returns function that applies it to 
+    compiled doc or node."
     [f]
     (let    [proc   #^Processor (get-proc)
-             comp   (.newXsltCompiler proc)
-             exe    (.compile comp (StreamSource. 
-                                    (if (string? f)
-                                        (File. #^String f)
-                                        #^File f)))]
+             cmplr  (.newXsltCompiler proc)
+             exe    (.compile cmplr #^Source (xml-source f))]
 
         (fn [#^XdmNode xml & params]
             (let    [xdm-dest    (XdmDestination.)
@@ -130,16 +146,44 @@
     optional map of prefixes (as keywords) and namespace URIs."
     [#^String xpath & ns-map]
     (let    [proc   #^Processor (get-proc)
-             comp   (.newXPathCompiler proc) 
-             comp   (if ns-map 
-                        (add-ns-to-xpath comp (first ns-map)) 
-                        comp)
-             exe    (.compile #^XPathCompiler comp xpath)
+             cmplr  (.newXPathCompiler proc) 
+             cmplr  (if ns-map 
+                        (add-ns-to-xpath cmplr (first ns-map)) 
+                        cmplr)
+             exe    (.compile #^XPathCompiler cmplr xpath)
              selector (.load exe)]
 
         (fn [#^XdmNode xml] 
             (.setContextItem selector xml)
             (unwrap-xdm-items selector))))
+
+; helper for compile-xquery
+(defn- add-ns-to-xquery
+    "Adds namespaces to XQueryCompiler from map. Returns same 
+    XQueryCompiler."
+    [#^XQueryCompiler xq-compiler ns-map]
+    (doseq [[pre uri] ns-map]
+        (.declareNamespace xq-compiler (name pre) uri))
+    xq-compiler)
+
+(defn compile-xquery
+    "Compiles XQuery expression (given as string), returns
+    function that applies it to compiled doc or node. Takes 
+    optional map of prefixes (as keywords) and namespace URIs."
+    [#^String xquery & ns-map]
+    (let    [proc   #^Processor (get-proc)
+             cmplr  (.newXQueryCompiler proc) 
+             cmplr  (if ns-map 
+                        (add-ns-to-xquery cmplr (first ns-map)) 
+                        cmplr)
+             exe    (.compile #^XQueryCompiler cmplr xquery)
+             evaluator (.load exe)]
+
+        (fn [#^XdmNode xml] 
+            ; TODO add variable support
+            ;(.setExternalVariable #^Qname name #^XdmValue val)
+            (.setContextItem evaluator xml)
+            (unwrap-xdm-items evaluator))))
 
 ;; Node functions
 
