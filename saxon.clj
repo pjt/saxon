@@ -93,7 +93,7 @@
     File, InputStream, Reader; if given String, converts
     it to File."
     [f]
-    (let [f     (when (string? f) (File. #^String f))
+    (let [f     (if (string? f) (File. #^String f) f)
           strm  (xml-source f)]
       (.. #^Processor (get-proc) (newDocumentBuilder) 
                       (build #^Source strm))))
@@ -108,7 +108,7 @@
 
 (defn compile-xslt
     "Compiles stylesheet (from anything convertible to javax.
-    xml.transform.Source, returns function that applies it to 
+    xml.transform.Source), returns function that applies it to 
     compiled doc or node."
     [f]
     (let    [proc   #^Processor (get-proc)
@@ -283,5 +283,4 @@
     "Returns true if node is processing instruction."
     [#^XdmNode nd]
     (.equals (.getNodeKind nd) XdmNodeKind/PROCESSING_INSTRUCTION))
-
 
