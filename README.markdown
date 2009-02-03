@@ -7,8 +7,8 @@ Saxonica Limited).
 Dependencies
 ------------
 
-You must have the saxon9.jar & the saxon9-s9api.jar on your classpath. (Latest
-versions available at the Sourceforge [download area][sfdl].)
+Are included in this distribution in the /deps directory. When built with Ant, are included
+in the resulting saxon.jar.
 
 Use
 ---
@@ -33,9 +33,9 @@ You can compile XML strings or files into nodes in memory ("XdmNodes"), as in
 
 `compile-file` reads an XML document from the filesystem into a document node.
 
-To process nodes, use the functions returned from `compile-xslt` & `compile-xpath`. 
-`compile-xpath` returns a lazy sequence of matching nodes (the XPath evaluation is
-done lazily in Saxon, as well).
+To process nodes, use the functions returned from `compile-xslt`, `compile-xpath`,
+& `compile-xquery`. `compile-xpath` & `compile-xquery` return a lazy sequence of 
+matching nodes (the evaluation is done lazily in Saxon, as well).
 
     user=> (compile-xslt "strip.xsl")
     #<saxon$compile_xslt__53$fn__55 saxon$compile_xslt__53$fn__55@51d098b7>
@@ -48,13 +48,13 @@ done lazily in Saxon, as well).
     #<XdmNode Hi!>
 
     user=> ((compile-xpath "//punc") node1)
-    (#<XdmNode <punc>!</punc>>)
+    #<XdmNode <punc>!</punc>>
     user=> ((compile-xpath "//punc/string()") node1)
-    ("!")
+    "!"
     user=> (def punc-str (compile-xpath "//punc/string()"))
     #'user/punc-str
     user=> (punc-str node1)
-    ("!")
+    "!"
 
 
 In addition to the compilation & processing functions, there are some helper
