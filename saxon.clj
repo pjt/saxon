@@ -7,29 +7,15 @@
 ; remove this notice from this software.
 
 (ns saxon
-   ; Saxon Clojure wrapper
-   ; Requires the saxon9.jar & the saxon9-s9api.jar on classpath
-
+    "Clojure Saxon wrapper"
     (:import 
         (java.io File InputStream Reader StringReader)
         (javax.xml.transform.stream StreamSource)
         (javax.xml.transform Source)
-        (net.sf.saxon.s9api 
-            Axis
-            Processor 
-            Serializer 
-            Serializer$Property
-            XPathCompiler
-            XPathSelector
-            XdmDestination
-            XdmValue
-            XdmItem
-            XdmNode
-            XdmNodeKind
-            XdmAtomicValue
-            XQueryCompiler
-            XQueryEvaluator
-            QName)
+        (net.sf.saxon.s9api Axis Processor Serializer Serializer$Property
+                            XPathCompiler XPathSelector XdmDestination XdmValue
+                            XdmItem XdmNode XdmNodeKind XdmAtomicValue
+                            XQueryCompiler XQueryEvaluator QName)
         (net.sf.saxon.om Navigator NodeInfo)))
 
 ;;
@@ -40,6 +26,7 @@
     "Returns the Saxon Processor object, the thread-safe 
     generator class for documents, stylesheets, & XPaths.
     Creates & defs the Processor if not already created."
+    {:tag Processor}
     []
     (defonce #^{:private true} *p* (Processor. false)) *p*)
 
@@ -92,18 +79,20 @@
     currency for in-memory tree representation. Takes
     File, InputStream, Reader; if given String, converts
     it to File."
+    {:tag XdmNode}
     [f]
     (let [f     (if (string? f) (File. #^String f) f)
           strm  (xml-source f)]
-      (.. #^Processor (get-proc) (newDocumentBuilder) 
+      (.. (get-proc) (newDocumentBuilder) 
                       (build #^Source strm))))
 
 (defn compile-string
     "Compiles XML string into an XdmNode, the Saxon currency 
     for in-memory tree representation. Takes string, or, 
     optionally, java.io.InputStream or java.io.Reader."
+    {:tag XdmNode}
     [s]
-    (.. #^Processor (get-proc) (newDocumentBuilder) 
+    (.. (get-proc) (newDocumentBuilder) 
                         (build #^Source (xml-source s))))
 
 (defn compile-xslt
@@ -111,8 +100,7 @@
     xml.transform.Source), returns function that applies it to 
     compiled doc or node."
     [f]
-    (let    [proc   #^Processor (get-proc)
-             cmplr  (.newXsltCompiler proc)
+    (let    [cmplr  (.newXsltCompiler (get-proc))
              exe    (.compile cmplr #^Source (xml-source f))]
 
         (fn [#^XdmNode xml & params]
@@ -135,6 +123,7 @@
 (defn- add-ns-to-xpath
     "Adds namespaces to XPathCompiler from map. Returns same 
     XPathCompiler."
+    {:tag XPathCompiler}
     [#^XPathCompiler xp-compiler ns-map]
     (doseq [[pre uri] ns-map]
         (.declareNamespace xp-compiler (name pre) uri))
@@ -145,12 +134,11 @@
     function that applies it to compiled doc or node. Takes 
     optional map of prefixes (as keywords) and namespace URIs."
     [#^String xpath & ns-map]
-    (let    [proc   #^Processor (get-proc)
-             cmplr  (.newXPathCompiler proc) 
+    (let    [cmplr  (.newXPathCompiler (get-proc)) 
              cmplr  (if ns-map 
                         (add-ns-to-xpath cmplr (first ns-map)) 
                         cmplr)
-             exe    (.compile #^XPathCompiler cmplr xpath)
+             exe    (.compile cmplr xpath)
              selector (.load exe)]
 
         (fn [#^XdmNode xml] 
@@ -161,6 +149,7 @@
 (defn- add-ns-to-xquery
     "Adds namespaces to XQueryCompiler from map. Returns same 
     XQueryCompiler."
+    {:tag XQueryCompiler}
     [#^XQueryCompiler xq-compiler ns-map]
     (doseq [[pre uri] ns-map]
         (.declareNamespace xq-compiler (name pre) uri))
@@ -171,12 +160,11 @@
     function that applies it to compiled doc or node. Takes 
     optional map of prefixes (as keywords) and namespace URIs."
     [#^String xquery & ns-map]
-    (let    [proc   #^Processor (get-proc)
-             cmplr  (.newXQueryCompiler proc) 
+    (let    [cmplr  (.newXQueryCompiler (get-proc)) 
              cmplr  (if ns-map 
                         (add-ns-to-xquery cmplr (first ns-map)) 
                         cmplr)
-             exe    (.compile #^XQueryCompiler cmplr xquery)
+             exe    (.compile cmplr xquery)
              evaluator (.load exe)]
 
         (fn [#^XdmNode xml] 
