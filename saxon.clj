@@ -12,10 +12,10 @@
         (java.io File InputStream Reader StringReader)
         (javax.xml.transform.stream StreamSource)
         (javax.xml.transform Source)
-        (net.sf.saxon.s9api Axis Processor Serializer Serializer$Property
-                            XPathCompiler XPathSelector XdmDestination XdmValue
-                            XdmItem XdmNode XdmNodeKind XdmAtomicValue
-                            XQueryCompiler XQueryEvaluator QName)
+        (net.sf.saxon.s9api Axis Destination Processor Serializer 
+                            Serializer$Property XPathCompiler XPathSelector 
+                            XdmDestination XdmValue XdmItem XdmNode XdmNodeKind 
+                            XdmAtomicValue XQueryCompiler XQueryEvaluator QName)
         (net.sf.saxon.om Navigator NodeInfo)))
 
 ;;
@@ -172,6 +172,26 @@
             ;(.setExternalVariable #^Qname name #^XdmValue val)
             (.setContextItem evaluator xml)
             (unwrap-xdm-items evaluator))))
+
+;; Serializing
+
+(defn- write-value
+  [#^XdmValue node #^Destination serializer]
+  (.writeXdmValue (get-proc) node serializer))
+
+(defmulti serialize (fn [node dest] (class dest)))
+  (defmethod serialize java.io.File
+    [node #^java.io.File dest]
+    (let [s (Serializer.)]
+      (write-value node (doto s (.setOutputFile dest)))))
+  (defmethod serialize java.io.OutputStream
+    [node #^java.io.OutputStream dest]
+    (let [s (Serializer.)]
+      (write-value node (doto s (.setOutputStream dest)))))
+  (defmethod serialize java.io.Writer
+    [node #^java.io.Writer dest]
+    (let [s (Serializer.)]
+      (write-value node (doto s (.setOutputWriter dest)))))
 
 ;; Node functions
 
