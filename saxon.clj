@@ -66,7 +66,7 @@
     (let [result 
             (map #(if (atomic? %) (.getValue #^XdmAtomicValue %) %)
                sel)]
-      (if (rest result)
+      (if (next result)
          result
          (first result))))
 
