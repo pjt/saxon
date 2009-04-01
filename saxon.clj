@@ -1,4 +1,4 @@
-; Copyright (c) December 2008, Perry Trolard, Washington University in Saint Louis.
+; Copyright © March 2009, Perry Trolard, Washington University in Saint Louis
 ; 
 ; The use and distribution terms for this software are covered by the MIT 
 ; Licence (http://opensource.org/licenses/mit-license.php), which can be found 
@@ -138,12 +138,12 @@
              cmplr  (if ns-map 
                         (add-ns-to-xpath cmplr (first ns-map)) 
                         cmplr)
-             exe    (.compile cmplr xpath)
-             selector (.load exe)]
+             exe    (.compile cmplr xpath)]
 
         (fn [#^XdmNode xml] 
-            (.setContextItem selector xml)
-            (unwrap-xdm-items selector))))
+            (unwrap-xdm-items
+              (doto (.load exe)
+                (.setContextItem xml))))))
 
 ; helper for compile-xquery
 (defn- add-ns-to-xquery
@@ -164,14 +164,14 @@
              cmplr  (if ns-map 
                         (add-ns-to-xquery cmplr (first ns-map)) 
                         cmplr)
-             exe    (.compile cmplr xquery)
-             evaluator (.load exe)]
+             exe    (.compile cmplr xquery)]
 
         (fn [#^XdmNode xml] 
             ; TODO add variable support
             ;(.setExternalVariable #^Qname name #^XdmValue val)
-            (.setContextItem evaluator xml)
-            (unwrap-xdm-items evaluator))))
+            (unwrap-xdm-items 
+              (doto (.load exe)
+                (.setContextItem xml))))))
 
 ;; Serializing
 
