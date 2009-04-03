@@ -160,8 +160,7 @@
 (defn- set-props
   [#^Serializer s props]
   (doseq [[prop value] props]
-    (let [prop (some #(and (#{(name prop)} (str %)) %)
-                        (.getEnumConstants Serializer$Property))]
+    (let [prop (Serializer$Property/valueOf (-> (name prop) (.replace "-" "_") .toUpperCase))]
       (.setOutputProperty s prop value))))
 
 (defmulti serialize (fn [node dest & props] (class dest)))
