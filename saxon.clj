@@ -119,25 +119,14 @@
                     (.transform))
                 (.getXdmNode xdm-dest)))))
 
-; helper for compile-xpath
-(defn- add-ns-to-xpath
-    "Adds namespaces to XPathCompiler from map. Returns same 
-    XPathCompiler."
-    {:tag XPathCompiler}
-    [#^XPathCompiler xp-compiler ns-map]
-    (doseq [[pre uri] ns-map]
-        (.declareNamespace xp-compiler (name pre) uri))
-    xp-compiler)
-        
 (defn compile-xpath
     "Compiles XPath expression (given as string), returns
     function that applies it to compiled doc or node. Takes 
     optional map of prefixes (as keywords) and namespace URIs."
     [#^String xpath & ns-map]
-    (let    [cmplr  (.newXPathCompiler (get-proc)) 
-             cmplr  (if ns-map 
-                        (add-ns-to-xpath cmplr (first ns-map)) 
-                        cmplr)
+    (let    [cmplr  (doto (.newXPathCompiler (get-proc)) 
+                      (#(doseq [[pre uri] (first ns-map)]
+                          (.declareNamespace % (name pre) uri))))
              exe    (.compile cmplr xpath)]
 
         (fn [#^XdmNode xml] 
@@ -145,25 +134,14 @@
               (doto (.load exe)
                 (.setContextItem xml))))))
 
-; helper for compile-xquery
-(defn- add-ns-to-xquery
-    "Adds namespaces to XQueryCompiler from map. Returns same 
-    XQueryCompiler."
-    {:tag XQueryCompiler}
-    [#^XQueryCompiler xq-compiler ns-map]
-    (doseq [[pre uri] ns-map]
-        (.declareNamespace xq-compiler (name pre) uri))
-    xq-compiler)
-
 (defn compile-xquery
     "Compiles XQuery expression (given as string), returns
     function that applies it to compiled doc or node. Takes 
     optional map of prefixes (as keywords) and namespace URIs."
     [#^String xquery & ns-map]
-    (let    [cmplr  (.newXQueryCompiler (get-proc)) 
-             cmplr  (if ns-map 
-                        (add-ns-to-xquery cmplr (first ns-map)) 
-                        cmplr)
+    (let    [cmplr  (doto (.newXQueryCompiler (get-proc)) 
+                      (#(doseq [[pre uri] (first ns-map)]
+                          (.declareNamespace % (name pre) uri))))
              exe    (.compile cmplr xquery)]
 
         (fn [#^XdmNode xml] 
@@ -179,18 +157,28 @@
   [#^XdmValue node #^Destination serializer]
   (.writeXdmValue (get-proc) node serializer))
 
-(defmulti serialize (fn [node dest] (class dest)))
+(defn- set-props
+  [#^Serializer s props]
+  (doseq [[prop value] props]
+    (let [prop (some #(and (#{(name prop)} (str %)) %)
+                        (.getEnumConstants Serializer$Property))]
+      (.setOutputProperty s prop value))))
+
+(defmulti serialize (fn [node dest & props] (class dest)))
   (defmethod serialize java.io.File
-    [node #^java.io.File dest]
+    [node #^java.io.File dest & props]
     (let [s (Serializer.)]
+      (set-props s (first props))
       (write-value node (doto s (.setOutputFile dest)))))
   (defmethod serialize java.io.OutputStream
-    [node #^java.io.OutputStream dest]
+    [node #^java.io.OutputStream dest & props]
     (let [s (Serializer.)]
+      (set-props s (first props))
       (write-value node (doto s (.setOutputStream dest)))))
   (defmethod serialize java.io.Writer
-    [node #^java.io.Writer dest]
+    [node #^java.io.Writer dest & props]
     (let [s (Serializer.)]
+      (set-props s (first props))
       (write-value node (doto s (.setOutputWriter dest)))))
 
 ;; Node functions
