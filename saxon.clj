@@ -7,28 +7,28 @@
 ; remove this notice from this software.
 
 (ns saxon
-    "Clojure Saxon wrapper"
-    (:import 
-        (java.io File InputStream Reader StringReader)
-        (javax.xml.transform.stream StreamSource)
-        (javax.xml.transform Source)
-        (net.sf.saxon.s9api Axis Destination Processor Serializer 
-                            Serializer$Property XPathCompiler XPathSelector 
-                            XdmDestination XdmValue XdmItem XdmNode XdmNodeKind 
-                            XdmAtomicValue XQueryCompiler XQueryEvaluator QName)
-        (net.sf.saxon.om Navigator NodeInfo)))
+  "Clojure Saxon wrapper"
+  (:gen-class)
+  (:import 
+    (java.io File InputStream Reader StringReader)
+    (javax.xml.transform.stream StreamSource)
+    (javax.xml.transform Source)
+    (net.sf.saxon.s9api Axis Destination Processor Serializer 
+                        Serializer$Property XPathCompiler XPathSelector 
+                        XdmDestination XdmValue XdmItem XdmNode XdmNodeKind 
+                        XdmAtomicValue XQueryCompiler XQueryEvaluator QName)
+    (net.sf.saxon.om Navigator NodeInfo)))
 
 ;;
 ;; Private functions
 ;;
 
 (defn- get-proc
-    "Returns the Saxon Processor object, the thread-safe 
-    generator class for documents, stylesheets, & XPaths.
-    Creates & defs the Processor if not already created."
-    {:tag Processor}
-    []
-    (defonce #^{:private true} *p* (Processor. false)) *p*)
+  "Returns the Saxon Processor object, the thread-safe generator class for documents, 
+  stylesheets, & XPaths. Creates & defs the Processor if not already created."
+  {:tag Processor}
+  []
+  (defonce #^{:private true} *p* (Processor. false)) *p*)
 
 (defmulti xml-source class)
   (defmethod xml-source File
@@ -50,106 +50,105 @@
 
 ;; Well, except this is public -- maybe doesn't need to be
 (defn atomic?
-    "Returns true if XdmItem or a subclass
-    (XdmAtomicValue, XdmNode) is an atomic value."
-    [#^XdmItem val]
-    (.isAtomicValue val))
+  "Returns true if XdmItem or a subclass (XdmAtomicValue, XdmNode) is an atomic value."
+  [#^XdmItem val]
+  (.isAtomicValue val))
 
 (defn- unwrap-xdm-items
-    "Makes XdmItems Clojure-friendly. A Saxon XdmItem is either 
-    an atomic value (number, string, URI) or a node. 
-    
-    This function returns an unwrapped item or a sequence of them, 
-    turning XdmAtomicValues into their corresponding Java datatypes 
-    (Strings, the numeric types), leaving XdmNodes as nodes."
-    [sel]
-    (let [result 
-            (map #(if (atomic? %) (.getValue #^XdmAtomicValue %) %)
-               sel)]
-      (if (next result)
-         result
-         (first result))))
+  "Makes XdmItems Clojure-friendly. A Saxon XdmItem is either an atomic value 
+  (number, string, URI) or a node. 
+  
+  This function returns an unwrapped item or a sequence of them, turning XdmAtomicValues 
+  into their corresponding Java datatypes (Strings, the numeric types), leaving XdmNodes 
+  as nodes."
+  [sel]
+  (let [result 
+          (map #(if (atomic? %) (.getValue #^XdmAtomicValue %) %)
+             sel)]
+    (if (next result)
+       result
+       (first result))))
 
 ;;
 ;; Public functions
 ;;
 
 (defn compile-file
-    "Compiles XML file into an XdmNode, the Saxon 
-    currency for in-memory tree representation. Takes
-    File, InputStream, Reader; if given String, converts
-    it to File."
-    {:tag XdmNode}
-    [f]
-    (let [f     (if (string? f) (File. #^String f) f)
-          strm  (xml-source f)]
-      (.. (get-proc) (newDocumentBuilder) 
-                      (build #^Source strm))))
+  "Compiles XML file into an XdmNode, the Saxon 
+  currency for in-memory tree representation. Takes
+  File, InputStream, Reader; if given String, converts
+  it to File."
+  {:tag XdmNode}
+  [f]
+  (let [f     (if (string? f) (File. #^String f) f)
+        strm  (xml-source f)]
+    (.. (get-proc) (newDocumentBuilder) 
+                    (build #^Source strm))))
 
 (defn compile-string
-    "Compiles XML string into an XdmNode, the Saxon currency 
-    for in-memory tree representation. Takes string, or, 
-    optionally, java.io.InputStream or java.io.Reader."
-    {:tag XdmNode}
-    [s]
-    (.. (get-proc) (newDocumentBuilder) 
-                        (build #^Source (xml-source s))))
+  "Compiles XML string into an XdmNode, the Saxon currency 
+  for in-memory tree representation. Takes string, or, 
+  optionally, java.io.InputStream or java.io.Reader."
+  {:tag XdmNode}
+  [s]
+  (.. (get-proc) (newDocumentBuilder) 
+                      (build #^Source (xml-source s))))
 
 (defn compile-xslt
-    "Compiles stylesheet (from anything convertible to javax.
-    xml.transform.Source), returns function that applies it to 
-    compiled doc or node."
-    [f]
-    (let    [cmplr  (.newXsltCompiler (get-proc))
-             exe    (.compile cmplr #^Source (xml-source f))]
+  "Compiles stylesheet (from anything convertible to javax.
+  xml.transform.Source), returns function that applies it to 
+  compiled doc or node."
+  [f]
+  (let    [cmplr  (.newXsltCompiler (get-proc))
+           exe    (.compile cmplr #^Source (xml-source f))]
 
-        (fn [#^XdmNode xml & params]
-            (let    [xdm-dest    (XdmDestination.)
-                     transformer (.load exe)] ; created anew, is thread-safe
-                (when params
-                    (let [prms  (first params)
-                          ks    (keys prms)]
-                        (doseq [k ks]
-                            (.setParameter transformer
-                                (QName. #^String (name k))
-                                (XdmAtomicValue. (k prms))))))
-                (doto transformer
-                    (.setInitialContextNode xml)
-                    (.setDestination xdm-dest)
-                    (.transform))
-                (.getXdmNode xdm-dest)))))
+    (fn [#^XdmNode xml & params]
+      (let  [xdm-dest    (XdmDestination.)
+             transformer (.load exe)] ; created anew, is thread-safe
+        (when params
+          (let [prms  (first params)
+                ks    (keys prms)]
+            (doseq [k ks]
+              (.setParameter transformer
+                (QName. #^String (name k))
+                (XdmAtomicValue. (k prms))))))
+        (doto transformer
+          (.setInitialContextNode xml)
+          (.setDestination xdm-dest)
+          (.transform))
+        (.getXdmNode xdm-dest)))))
 
 (defn compile-xpath
-    "Compiles XPath expression (given as string), returns
-    function that applies it to compiled doc or node. Takes 
-    optional map of prefixes (as keywords) and namespace URIs."
-    [#^String xpath & ns-map]
-    (let    [cmplr  (doto (.newXPathCompiler (get-proc)) 
-                      (#(doseq [[pre uri] (first ns-map)]
-                          (.declareNamespace % (name pre) uri))))
-             exe    (.compile cmplr xpath)]
+  "Compiles XPath expression (given as string), returns
+  function that applies it to compiled doc or node. Takes 
+  optional map of prefixes (as keywords) and namespace URIs."
+  [#^String xpath & ns-map]
+  (let  [cmplr  (doto (.newXPathCompiler (get-proc)) 
+                    (#(doseq [[pre uri] (first ns-map)]
+                        (.declareNamespace % (name pre) uri))))
+         exe    (.compile cmplr xpath)]
 
-        (fn [#^XdmNode xml] 
-            (unwrap-xdm-items
-              (doto (.load exe)
-                (.setContextItem xml))))))
+    (fn [#^XdmNode xml] 
+      (unwrap-xdm-items
+        (doto (.load exe)
+          (.setContextItem xml))))))
 
 (defn compile-xquery
-    "Compiles XQuery expression (given as string), returns
-    function that applies it to compiled doc or node. Takes 
-    optional map of prefixes (as keywords) and namespace URIs."
-    [#^String xquery & ns-map]
-    (let    [cmplr  (doto (.newXQueryCompiler (get-proc)) 
-                      (#(doseq [[pre uri] (first ns-map)]
-                          (.declareNamespace % (name pre) uri))))
-             exe    (.compile cmplr xquery)]
+  "Compiles XQuery expression (given as string), returns
+  function that applies it to compiled doc or node. Takes 
+  optional map of prefixes (as keywords) and namespace URIs."
+  [#^String xquery & ns-map]
+  (let  [cmplr  (doto (.newXQueryCompiler (get-proc)) 
+                    (#(doseq [[pre uri] (first ns-map)]
+                        (.declareNamespace % (name pre) uri))))
+         exe    (.compile cmplr xquery)]
 
-        (fn [#^XdmNode xml] 
-            ; TODO add variable support
-            ;(.setExternalVariable #^Qname name #^XdmValue val)
-            (unwrap-xdm-items 
-              (doto (.load exe)
-                (.setContextItem xml))))))
+    (fn [#^XdmNode xml] 
+      ; TODO add variable support
+      ;(.setExternalVariable #^Qname name #^XdmValue val)
+      (unwrap-xdm-items 
+        (doto (.load exe)
+          (.setContextItem xml))))))
 
 ;; Serializing
 
@@ -168,17 +167,20 @@
     [node #^java.io.File dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
-      (write-value node (doto s (.setOutputFile dest)))))
+      (write-value node (doto s (.setOutputFile dest)))
+      dest))
   (defmethod serialize java.io.OutputStream
     [node #^java.io.OutputStream dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
-      (write-value node (doto s (.setOutputStream dest)))))
+      (write-value node (doto s (.setOutputStream dest)))
+      dest))
   (defmethod serialize java.io.Writer
     [node #^java.io.Writer dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
-      (write-value node (doto s (.setOutputWriter dest)))))
+      (write-value node (doto s (.setOutputWriter dest)))
+      dest))
 
 ;; Node functions
 
