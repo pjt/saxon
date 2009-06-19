@@ -150,6 +150,34 @@
         (doto (.load exe)
           (.setContextItem xml))))))
 
+;; memoize compile-query funcs, create top-level query func
+
+;; redef, decorate-with are copyright (c) James Reeves. All rights reserved.
+;; Taken from compojure.control; Compojure: http://github.com/weavejester/compojure
+
+(defmacro redef
+  "Redefine an existing value, keeping the metadata intact."
+  [name value]
+  `(let [m# (meta #'~name)
+         v# (def ~name ~value)]
+     (alter-meta! v# merge m#)
+     v#))
+
+(defmacro decorate-with
+  "Wrap multiple functions in a decorator."
+  [decorator & funcs]
+  `(do ~@(for [f funcs]
+          `(redef ~f (~decorator ~f)))))
+
+(decorate-with memoize compile-xpath compile-xquery)
+
+(defn query
+  "Run query on node. Arity of two accepts (1) string or compiled query fn & (2) node;
+  arity of three accepts (1) string query, (2) namespace map, & (3) node."
+  ([q nd] ((if (fn? q) q (compile-xquery q)) nd))
+  ([q nses nd] ((compile-xquery q nses) nd)))
+
+
 ;; Serializing
 
 (defn- write-value
