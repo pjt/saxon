@@ -152,11 +152,11 @@
 
 ;; memoize compile-query funcs, create top-level query func
 
-;; redef, decorate-with are copyright (c) James Reeves. All rights reserved.
-;; Taken from compojure.control; Compojure: http://github.com/weavejester/compojure
-
+  ;; redef, decorate-with are copyright (c) James Reeves. All rights reserved.
+  ;; Taken from compojure.control; Compojure: http://github.com/weavejester/compojure
 (defmacro redef
   "Redefine an existing value, keeping the metadata intact."
+  {:private true}
   [name value]
   `(let [m# (meta #'~name)
          v# (def ~name ~value)]
@@ -165,6 +165,7 @@
 
 (defmacro decorate-with
   "Wrap multiple functions in a decorator."
+  {:private true}
   [decorator & funcs]
   `(do ~@(for [f funcs]
           `(redef ~f (~decorator ~f)))))
@@ -176,6 +177,10 @@
   arity of three accepts (1) string query, (2) namespace map, & (3) node."
   ([q nd] ((if (fn? q) q (compile-xquery q)) nd))
   ([q nses nd] ((compile-xquery q nses) nd)))
+
+(definline with-default-ns
+  "Returns XQuery string with nmspce declared as default element namespace."
+  [nmspce q] (format "declare default element namespace '%s'; %s" nmspce q))
 
 
 ;; Serializing
