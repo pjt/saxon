@@ -180,7 +180,7 @@
 
 (definline with-default-ns
   "Returns XQuery string with nmspce declared as default element namespace."
-  [nmspce q] (format "declare default element namespace '%s'; %s" nmspce q))
+  [nmspce q] `(format "declare default element namespace '%s'; %s" ~nmspce ~q))
 
 
 ;; Serializing
