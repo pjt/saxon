@@ -37,12 +37,13 @@ To process nodes, use the functions returned from `compile-xslt`, `compile-xpath
 & `compile-xquery`. `compile-xpath` & `compile-xquery` return a lazy sequence of 
 matching nodes (the evaluation is done lazily in Saxon, as well).
 
-    user=> (compile-xslt "strip.xsl")
+    user=> (import 'java.io.File)
+    user=> (compile-xslt (File. "strip.xsl"))
     #<saxon$compile_xslt__53$fn__55 saxon$compile_xslt__53$fn__55@51d098b7>
-    user=> ((compile-xslt "strip.xsl") node1)
+    user=> ((compile-xslt (File. "strip.xsl")) node1)
     #<XdmNode Hi!>
     ; strip removes everything but text nodes
-    user=> (def strip (compile-xslt "strip.xsl"))
+    user=> (def strip (compile-xslt (File. "strip.xsl")))
     #'user/strip
     user=> (strip node1)
     #<XdmNode Hi!>
@@ -62,8 +63,8 @@ functions like `parent-node`, `node-kind`, etc., as well as node-kind predicates
 like `document?`, `element?`, etc. There is also `node-path`, which returns the
 XPath to the passed node:
 
-    user=> (map node-path ((compile-xpath "//punc") node1))
-    ("/doc/punc[1]")
+    user=> (node-path ((compile-xpath "//punc") node1))
+    "/doc/punc[1]"
  
 
 

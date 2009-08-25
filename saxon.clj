@@ -10,7 +10,7 @@
   "Clojure Saxon wrapper"
   (:gen-class)
   (:import 
-    (java.io File InputStream Reader StringReader)
+    (java.io File InputStream OutputStream Reader StringReader Writer)
     (javax.xml.transform.stream StreamSource)
     (javax.xml.transform Source)
     (net.sf.saxon.s9api Axis Destination Processor Serializer 
@@ -196,20 +196,20 @@
       (.setOutputProperty s prop value))))
 
 (defmulti serialize (fn [node dest & props] (class dest)))
-  (defmethod serialize java.io.File
-    [node #^java.io.File dest & props]
+  (defmethod serialize File
+    [node #^File dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
       (write-value node (doto s (.setOutputFile dest)))
       dest))
-  (defmethod serialize java.io.OutputStream
-    [node #^java.io.OutputStream dest & props]
+  (defmethod serialize OutputStream
+    [node #^OutputStream dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
       (write-value node (doto s (.setOutputStream dest)))
       dest))
-  (defmethod serialize java.io.Writer
-    [node #^java.io.Writer dest & props]
+  (defmethod serialize Writer
+    [node #^Writer dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
       (write-value node (doto s (.setOutputWriter dest)))
