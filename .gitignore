@@ -1,3 +1,4 @@
 *.swp
-saxon.jar
-local.properties
+*.jar
+lib/*
+Manifest.txt
