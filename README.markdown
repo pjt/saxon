@@ -7,8 +7,8 @@ Saxonica Limited).
 Dependencies
 ------------
 
-Are included in this distribution in the /deps directory. When built with Ant, are included
-in the resulting saxon.jar.
+Are managed by [leiningen](http://github.com/technomancy/leiningen). Run `lein deps` to download 
+jars into lib/. 
 
 Use
 ---
