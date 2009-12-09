@@ -1,4 +1,5 @@
 *.swp
 *.jar
 lib/*
+classes/*
 Manifest.txt
