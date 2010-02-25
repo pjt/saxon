@@ -1,6 +1,6 @@
 #!/usr/bin/env clj
 ; Command-line Saxon Xpath evaluator
-(use 'saxon '[clojure.contrib.str-utils :only (str-join)]
+(use 'saxon '[clojure.contrib.string    :only (join)]
             '[clojure.contrib.seq-utils :only (flatten)])
 
 (let [args *command-line-args*
@@ -16,6 +16,6 @@
                     (map (compile-xpath (last args)) 
                                 (map compile-file (butlast args))))]
         (if (coll? result)
-            (println (str-join "\n" (flatten (remove nil? result))))
+            (println (join "\n" (flatten (remove nil? result))))
             (println (str result)))))
             

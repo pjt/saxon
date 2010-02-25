@@ -9,7 +9,7 @@
 (ns saxon
   "Clojure Saxon wrapper"
   (:gen-class :prefix "")
-  (:use [clojure.contrib.str-utils :only (str-join)]
+  (:use [clojure.contrib.string    :only (join)]
         [clojure.contrib.seq-utils :only (flatten)])
   (:import 
     (java.io File InputStream OutputStream Reader StringReader Writer)
@@ -332,6 +332,6 @@
                     (map (compile-xquery (last args)) 
                                 (map compile-file (butlast args))))]
         (if (coll? result)
-            (println (str-join "\n" (flatten (remove nil? result))))
+            (println (join "\n" (flatten (remove nil? result))))
             (println (str result))))))
    
