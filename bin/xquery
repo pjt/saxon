@@ -1,6 +1,7 @@
 #!/usr/bin/env clj
-; Command-line Saxon Xpath evaluator
-(use 'saxon '[clojure.contrib.string    :only (join)]
+; Command-line Saxon XQuery evaluator
+(use 'saxon '[clojure.contrib.io        :only (file)]
+            '[clojure.contrib.string    :only (join)]
             '[clojure.contrib.seq-utils :only (flatten)])
 
 (let [args *command-line-args*
@@ -11,10 +12,10 @@
                 (zero? cnt)
                     (println "args: [xml*] xpath2.0-expression")
                 (= 1 cnt)
-                    ((compile-xpath (first args)) (compile-string System/in))
+                    ((compile-xquery (first args)) (compile-xml System/in))
                 :else
-                    (map (compile-xpath (last args)) 
-                                (map compile-file (butlast args))))]
+                    (map (compile-xquery (last args)) 
+                                (map (comp compile-xml file) (butlast args))))]
         (if (coll? result)
             (println (join "\n" (flatten (remove nil? result))))
             (println (str result)))))

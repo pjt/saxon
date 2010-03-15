@@ -9,9 +9,11 @@
 (ns saxon
   "Clojure Saxon wrapper"
   (:gen-class :prefix "")
-  (:use [clojure.contrib.string    :only (join)]
+  (:use [clojure.contrib.io        :only (file)]
+        [clojure.contrib.string    :only (join)]
         [clojure.contrib.seq-utils :only (flatten)])
   (:import 
+    java.net.URL
     (java.io File InputStream OutputStream Reader StringReader Writer)
     (javax.xml.transform.stream StreamSource)
     (javax.xml.transform Source)
@@ -39,6 +41,9 @@
   (defmethod xml-source InputStream
     [i]
     (StreamSource. #^InputStream i))
+  (defmethod xml-source URL
+    [u]
+    (StreamSource. #^InputStream (.openStream #^URL u)))
   (defmethod xml-source Reader
     [r]
     (StreamSource. #^Reader r))
@@ -75,26 +80,14 @@
 ;; Public functions
 ;;
 
-(defn compile-file
-  "Compiles XML file into an XdmNode, the Saxon 
+(defn compile-xml
+  "Compiles XML into an XdmNode, the Saxon 
   currency for in-memory tree representation. Takes
-  File, InputStream, Reader; if given String, converts
-  it to File."
+  File, URL, InputStream, Reader, or String." 
   {:tag XdmNode}
-  [f]
-  (let [f     (if (string? f) (File. #^String f) f)
-        strm  (xml-source f)]
-    (.. (get-proc) (newDocumentBuilder) 
-                    (build #^Source strm))))
-
-(defn compile-string
-  "Compiles XML string into an XdmNode, the Saxon currency 
-  for in-memory tree representation. Takes string, or, 
-  optionally, java.io.InputStream or java.io.Reader."
-  {:tag XdmNode}
-  [s]
+  [x]
   (.. (get-proc) (newDocumentBuilder) 
-                      (build #^Source (xml-source s))))
+                  (build #^Source (xml-source x))))
 
 (defn compile-xslt
   "Compiles stylesheet (from anything convertible to javax.
@@ -327,10 +320,10 @@
                 (zero? cnt)
                     (println "args: [xml*] xquery-expression")
                 (= 1 cnt)
-                    ((compile-xquery (first args)) (compile-string System/in))
+                    ((compile-xquery (first args)) (compile-xml System/in))
                 :else
                     (map (compile-xquery (last args)) 
-                                (map compile-file (butlast args))))]
+                                (map (comp compile-xml file) (butlast args))))]
         (if (coll? result)
             (println (join "\n" (flatten (remove nil? result))))
             (println (str result))))))
