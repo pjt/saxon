@@ -87,7 +87,7 @@ that applies the compiled stylesheet to a node, with an optional map of paramete
 
 ###Singletons
 
-When the results of a query is a single item, the query functions return a singleton
+When the result of a query is a single item, the query functions return a singleton
 instead of a sequence of one item, e.g.
 
     user=> (xml/query "count(//element())" xmldoc)
@@ -101,7 +101,7 @@ appreciated.
 
 Traversal of nodes is somewhat lazy, though not strictly so. The Clojure code
 realizes the first two items of the return sequence, and the Saxon Java processor 
-seems to keep a few items ahead as well. E.g. in `xmldoc` with 7 element nodes:
+seems to keep a few items ahead as well. E.g. in `xmldoc`, with 7 element nodes:
 
     user=> (def returned (xml/query "for $e in //element() return trace(($e/local-name()), \"hit\")" xmldoc))
     hit [1]: xs:string: html
@@ -129,15 +129,15 @@ seems to keep a few items ahead as well. E.g. in `xmldoc` with 7 element nodes:
 
 As you can see, three items are realized when the function is first executed, and
 from when the third item is touched onward, realizing an item also realizes the 
-*next* item as well.
+*next* item in the background.
 
   
 ###Helper Functions
 
 `node-path` returns an absolute XPath to a node:
 
-   user=> (map xml/node-path (xml/query "//element()" xmldoc))
-   ("/html" "/html/head[1]" "/html/head[1]/title[1]" "/html/head[1]/style[1]" "/html/body[1]" "/html/body[1]/p[1]" "/html/body[1]/a[1]")
+    user=> (map xml/node-path (xml/query "//element()" xmldoc))
+    ("/html" "/html/head[1]" "/html/head[1]/title[1]" "/html/head[1]/style[1]" "/html/body[1]" "/html/body[1]/p[1]" "/html/body[1]/a[1]")
    
 `with-default-ns` adds a default namespace to an XQuery expression:
 
