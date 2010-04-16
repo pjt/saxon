@@ -2,7 +2,7 @@
 ; Command-line Saxon XQuery evaluator
 (use 'saxon '[clojure.contrib.io        :only (file)]
             '[clojure.contrib.string    :only (join)]
-            '[clojure.contrib.seq-utils :only (flatten)])
+            '[clojure.contrib.seq       :only (flatten)])
 
 (let [args *command-line-args*
       cnt  (count args)]

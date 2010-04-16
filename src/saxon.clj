@@ -11,7 +11,7 @@
   (:gen-class :prefix "")
   (:use [clojure.contrib.io        :only (file)]
         [clojure.contrib.string    :only (join)]
-        [clojure.contrib.seq-utils :only (flatten)])
+        [clojure.contrib.seq       :only (flatten)])
   (:import 
     java.net.URL
     (java.io File InputStream OutputStream Reader StringReader Writer)
