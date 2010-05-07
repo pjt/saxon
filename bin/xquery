@@ -1,8 +1,7 @@
 #!/usr/bin/env clj
 ; Command-line Saxon XQuery evaluator
 (use 'saxon '[clojure.contrib.io        :only (file)]
-            '[clojure.contrib.string    :only (join)]
-            '[clojure.contrib.seq       :only (flatten)])
+            '[clojure.contrib.string    :only (join)])
 
 (let [args *command-line-args*
       cnt  (count args)]
