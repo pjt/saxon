@@ -9,8 +9,8 @@
 (ns saxon
   "Clojure Saxon wrapper"
   (:gen-class :prefix "")
-  (:use [clojure.contrib.io        :only (file)]
-        [clojure.contrib.string    :only (join)])
+  (:use [clojure.java.io  :only (file)]
+        [clojure.string   :only (join)])
   (:import 
     java.net.URL
     (java.io File InputStream OutputStream Reader StringReader Writer)
