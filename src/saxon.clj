@@ -13,6 +13,7 @@
         [clojure.string   :only (join)])
   (:import 
     java.net.URL
+    net.sf.saxon.FeatureKeys
     (java.io File InputStream OutputStream Reader StringReader Writer)
     (javax.xml.transform.stream StreamSource)
     (javax.xml.transform Source)
@@ -31,7 +32,19 @@
   stylesheets, & XPaths. Creates & defs the Processor if not already created."
   {:tag Processor}
   []
-  (defonce #^{:private true} *p* (Processor. false)) *p*)
+  (defonce ^{:private true} *p* (Processor. false)) *p*)
+
+(defn set-config-property!
+  "Sets a configuration property on the Saxon Processor object. Takes keyword
+  representing a net.sf.saxon.FeatureKeys field and the value to be set, e.g.
+    (set-config-property! :line-numbering true)
+  Lets errors bubble up."
+  [prop value]
+  (let [prop  (-> (name prop) .toUpperCase (.replace "-" "_"))
+        field (.get (.getField FeatureKeys prop) nil)]
+    (.setConfigurationProperty (get-proc) field value)))
+
+
 
 (defmulti xml-source class)
   (defmethod xml-source File
