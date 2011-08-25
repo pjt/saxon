@@ -16,7 +16,7 @@ Install
 A jar is available on [Clojars](http://clojars.org). Use the following formula
 in your `project.clj` `:dependencies`:
 
-    [clojure-saxon "0.9.1-SNAPSHOT"]
+    [clojure-saxon "0.9.2"]
 
 
 Use
@@ -49,8 +49,8 @@ Compiled XQuery expressions are cached:
     "Elapsed time: 0.226 msecs"
     true
 
-but `query` accepts a compiled function as its first argument as well. (The *results*
-of the query are not cached.)
+but `query` accepts a compiled function (the result of `compile-xquery` or `compile-xpath`, 
+below) as its first argument as well. (The *results* of the query are not cached.)
 
 
 ###Compile-xquery, Compile-xpath 
@@ -73,7 +73,7 @@ Use `compile-xml` to produce the Saxon in-memory representation, an "XdmNode."
     user=> (def xmldoc (xml/compile-xml (java.net.URL. "http://hdwdev.artsci.wustl.edu")))
     #'user/xmldoc
     
-`compile-xml` takes a File, URL, InputStream, Reader, raw String (or XdmNode).
+`compile-xml` takes a File, URL, InputStream, Reader, raw String, or an XdmNode.
 
     user=> (xml/compile-xml "<root/>")
     #<XdmNode <root/>>
