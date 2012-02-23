@@ -8,7 +8,7 @@
 
 (ns saxon
   "Clojure Saxon wrapper"
-  (:gen-class :prefix "")
+  (:gen-class)
   (:use [clojure.java.io  :only (file)]
         [clojure.string   :only (join)])
   (:import 
@@ -327,7 +327,7 @@
 
 ;; Main
 
-(defn main [& args]
+(defn -main [& args]
   (let [cnt  (count args)]
     (if-let 
         [result
