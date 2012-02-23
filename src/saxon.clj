@@ -225,6 +225,11 @@
       (write-value node (doto s (.setOutputWriter dest)))
       dest))
 
+(defn serialize-to-string [node & props]
+  (let [s (Serializer.)]
+    (set-props s (first props))
+    (. s serializeNodeToString node)))
+
 ;; Node functions
 
 (defn parent-node
