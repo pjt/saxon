@@ -8,12 +8,11 @@
 
 (ns saxon
   "Clojure Saxon wrapper"
-  (:gen-class :prefix "")
+  (:gen-class)
   (:use [clojure.java.io  :only (file)]
         [clojure.string   :only (join)])
   (:import 
     java.net.URL
-    net.sf.saxon.FeatureKeys
     (java.io File InputStream OutputStream Reader StringReader Writer)
     (javax.xml.transform.stream StreamSource)
     (javax.xml.transform Source)
@@ -21,18 +20,22 @@
                         Serializer$Property XPathCompiler XPathSelector 
                         XdmDestination XdmValue XdmItem XdmNode XdmNodeKind 
                         XdmAtomicValue XQueryCompiler XQueryEvaluator QName)
-    (net.sf.saxon.om Navigator NodeInfo)))
+    net.sf.saxon.lib.FeatureKeys
+    net.sf.saxon.tree.util.Navigator
+    net.sf.saxon.om.NodeInfo))
 
 ;;
-;; Private functions
+;; Utilities
 ;;
 
-(defn- get-proc
+(defn get-proc
   "Returns the Saxon Processor object, the thread-safe generator class for documents, 
   stylesheets, & XPaths. Creates & defs the Processor if not already created."
   {:tag Processor}
   []
-  (defonce ^{:private true} *p* (Processor. false)) *p*)
+  (defonce ^:private p 
+    (Processor. false)) 
+  p)
 
 (defn set-config-property!
   "Sets a configuration property on the Saxon Processor object. Takes keyword
@@ -46,7 +49,7 @@
 
 
 
-(defmulti xml-source class)
+(defmulti ^Source xml-source class)
   (defmethod xml-source File
     [f]
     (StreamSource. #^File f))
@@ -99,7 +102,7 @@
   {:tag XdmNode}
   [x]
   (.. (get-proc) (newDocumentBuilder) 
-                  (build #^Source (xml-source x))))
+                  (build (xml-source x))))
 
 (defn compile-xslt
   "Compiles stylesheet (from anything convertible to javax.
@@ -107,7 +110,7 @@
   compiled doc or node."
   [f]
   (let    [cmplr  (.newXsltCompiler (get-proc))
-           exe    (.compile cmplr #^Source (xml-source f))]
+           exe    (.compile cmplr   (xml-source f))]
 
     (fn [#^XdmNode xml & params]
       (let  [xdm-dest    (XdmDestination.)
@@ -117,7 +120,7 @@
                 ks    (keys prms)]
             (doseq [k ks]
               (.setParameter transformer
-                (QName. #^String (name k))
+                (QName. ^String (name k))
                 (XdmAtomicValue. (k prms))))))
         (doto transformer
           (.setInitialContextNode xml)
@@ -132,7 +135,7 @@
   [#^String xpath & ns-map]
   (let  [cmplr  (doto (.newXPathCompiler (get-proc)) 
                     (#(doseq [[pre uri] (first ns-map)]
-                        (.declareNamespace % (name pre) uri))))
+                        (.declareNamespace ^XPathCompiler % (name pre) uri))))
          exe    (.compile cmplr xpath)]
 
     (fn [#^XdmNode xml] 
@@ -147,7 +150,7 @@
   [#^String xquery & ns-map]
   (let  [cmplr  (doto (.newXQueryCompiler (get-proc)) 
                     (#(doseq [[pre uri] (first ns-map)]
-                        (.declareNamespace % (name pre) uri))))
+                        (.declareNamespace ^XQueryCompiler % (name pre) uri))))
          exe    (.compile cmplr xquery)]
 
     (fn [#^XdmNode xml] 
@@ -222,26 +225,31 @@
       (write-value node (doto s (.setOutputWriter dest)))
       dest))
 
+(defn serialize-to-string [node & props]
+  (let [s (Serializer.)]
+    (set-props s (first props))
+    (. s serializeNodeToString node)))
+
 ;; Node functions
 
 (defn parent-node
   "Returns parent node of passed node."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.getParent nd))
 
 (defn node-name
   "Returns the name of the node (as QName)."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.getNodeName nd))
 
 (defn node-ns
   "Returns the namespace of the node or node name."
   [q]
   (if (= (class q) QName)
-      (.getNamespaceURI #^QName q)
+      (.getNamespaceURI ^QName q)
       (node-ns (node-name q))))
 
-(def #^{:private true} 
+(def ^:private 
   node-kind-map
       {XdmNodeKind/DOCUMENT   :document
        XdmNodeKind/ELEMENT    :element
@@ -253,12 +261,12 @@
 
 (defn node-kind
   "Returns keyword corresponding to node's kind."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (node-kind-map (.getNodeKind nd)))
 
 (defn node-path
   "Returns XPath to node."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (Navigator/getPath (.getUnderlyingNode nd)))
 
 ;(def #^{:private true} 
@@ -288,43 +296,43 @@
 
 (defn document?
   "Returns true if node is document."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.equals (.getNodeKind nd) XdmNodeKind/DOCUMENT))
 
 (defn element?
   "Returns true if node is element."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.equals (.getNodeKind nd) XdmNodeKind/ELEMENT))
 
 (defn attribute?
   "Returns true if node is attribute."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.equals (.getNodeKind nd) XdmNodeKind/ATTRIBUTE))
 
 (defn text?
   "Returns true if node is text."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.equals (.getNodeKind nd) XdmNodeKind/TEXT))
 
 (defn comment?
   "Returns true if node is comment."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.equals (.getNodeKind nd) XdmNodeKind/COMMENT))
   
 (defn namespace?
   "Returns true if node is namespace."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.equals (.getNodeKind nd) XdmNodeKind/NAMESPACE))
 
 (defn processing-instruction?
   "Returns true if node is processing instruction."
-  [#^XdmNode nd]
+  [^XdmNode nd]
   (.equals (.getNodeKind nd) XdmNodeKind/PROCESSING_INSTRUCTION))
 
 
 ;; Main
 
-(defn main [& args]
+(defn -main [& args]
   (let [cnt  (count args)]
     (if-let 
         [result
