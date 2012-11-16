@@ -4,19 +4,18 @@ Saxon
 Functional Clojure wrapper for Michael Kay's 
 [Saxon XSLT and XQuery Processor][saxonica] (from Saxonica Limited). 
 
-Dependencies
-------------
-
-Are managed by [leiningen](http://github.com/technomancy/leiningen). Run 
-`lein deps` to download jars into lib/. 
-
 Install
 -------
 
 A jar is available on [Clojars](http://clojars.org). Use the following formula
 in your `project.clj` `:dependencies`:
 
-    [clojure-saxon "0.9.2"]
+    [clojure-saxon "0.9.3"]
+
+Clojure version
+---------------
+
+The library has been tested against Clojure 1.3 & 1.4.
 
 
 Use
