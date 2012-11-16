@@ -323,22 +323,3 @@
   [^XdmNode nd]
   (.equals (.getNodeKind nd) XdmNodeKind/PROCESSING_INSTRUCTION))
 
-
-;; Main
-
-(defn main [& args]
-  (let [cnt  (count args)]
-    (if-let 
-        [result
-            (cond 
-                (zero? cnt)
-                    (println "args: [xml*] xquery-expression")
-                (= 1 cnt)
-                    ((compile-xquery (first args)) (compile-xml System/in))
-                :else
-                    (map (compile-xquery (last args)) 
-                                (map (comp compile-xml file) (butlast args))))]
-        (if (coll? result)
-            (println (join "\n" (flatten (remove nil? result))))
-            (println (str result))))))
-   
