@@ -10,12 +10,12 @@ Install
 A jar is available on [Clojars](http://clojars.org). Use the following formula
 in your `project.clj` `:dependencies`:
 
-    [clojure-saxon "0.9.3"]
+    [clojure-saxon "0.9.4"]
 
 Clojure version
 ---------------
 
-The library has been tested against Clojure 1.3 & 1.4.
+The library has been tested against Clojure 1.3, 1.4, & 1.6.
 
 
 Use
