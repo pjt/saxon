@@ -27,14 +27,12 @@
 ;; Utilities
 ;;
 
-(defn get-proc
+(def ^{:tag Processor} 
+  proc
   "Returns the Saxon Processor object, the thread-safe generator class for documents, 
   stylesheets, & XPaths. Creates & defs the Processor if not already created."
-  {:tag Processor}
-  []
-  (defonce ^:private p 
-    (Processor. false)) 
-  p)
+  (Processor. false))
+
 
 (defn set-config-property!
   "Sets a configuration property on the Saxon Processor object. Takes keyword
@@ -44,7 +42,7 @@
   [prop value]
   (let [prop  (-> (name prop) .toUpperCase (.replace "-" "_"))
         field (.get (.getField FeatureKeys prop) nil)]
-    (.setConfigurationProperty (get-proc) field value)))
+    (.setConfigurationProperty proc field value)))
 
 
 
@@ -100,7 +98,7 @@
   File, URL, InputStream, Reader, or String." 
   {:tag XdmNode}
   [x]
-  (.. (get-proc) (newDocumentBuilder) 
+  (.. proc (newDocumentBuilder) 
                   (build (xml-source x))))
 
 (defn compile-xslt
@@ -108,7 +106,7 @@
   xml.transform.Source), returns function that applies it to 
   compiled doc or node."
   [f]
-  (let    [cmplr  (.newXsltCompiler (get-proc))
+  (let    [cmplr  (.newXsltCompiler proc)
            exe    (.compile cmplr   (xml-source f))]
 
     (fn [#^XdmNode xml & params]
@@ -132,7 +130,7 @@
   function that applies it to compiled doc or node. Takes 
   optional map of prefixes (as keywords) and namespace URIs."
   [#^String xpath & ns-map]
-  (let  [cmplr  (doto (.newXPathCompiler (get-proc)) 
+  (let  [cmplr  (doto (.newXPathCompiler proc) 
                     (#(doseq [[pre uri] (first ns-map)]
                         (.declareNamespace ^XPathCompiler % (name pre) uri))))
          exe    (.compile cmplr xpath)]
@@ -147,7 +145,7 @@
   function that applies it to compiled doc or node. Takes 
   optional map of prefixes (as keywords) and namespace URIs."
   [#^String xquery & ns-map]
-  (let  [cmplr  (doto (.newXQueryCompiler (get-proc)) 
+  (let  [cmplr  (doto (.newXQueryCompiler proc) 
                     (#(doseq [[pre uri] (first ns-map)]
                         (.declareNamespace ^XQueryCompiler % (name pre) uri))))
          exe    (.compile cmplr xquery)]
@@ -196,7 +194,7 @@
 
 (defn- write-value
   [#^XdmValue node #^Destination serializer]
-  (.writeXdmValue (get-proc) node serializer))
+  (.writeXdmValue proc node serializer))
 
 (defn- set-props
   [#^Serializer s props]
