@@ -36,14 +36,4 @@
   (is (=
         (into #{} (s/query proc "distinct-values(//xhtml:*/local-name())" {:xhtml "http://www.w3.org/1999/xhtml"} xmldoc))
         #{"html" "head" "meta" "body" "div" "table" "tbody" "tr" "td" "span" "br" "a"}))
-;  (is (=
-;        ))
-;  (is (=
-;        ))
-;  (is (=
-;        ))
-;  (is (=
-;        ))
-;  (is (=
-;        ))
   )

@@ -21,12 +21,52 @@
                         Serializer$Property XPathCompiler XPathSelector 
                         XdmDestination XdmValue XdmItem XdmNode XdmNodeKind 
                         XdmAtomicValue XQueryCompiler XQueryEvaluator QName)
+    org.apache.xml.resolver.CatalogManager
+    org.apache.xml.resolver.tools.CatalogResolver
     (net.sf.saxon.om NodeInfo)  
     (net.sf.saxon.tree.util Navigator)))
 
 ;;
 ;; Utilities
 ;;
+(def ^CatalogManager
+     allocate-catalog-manager
+  ;(memoize 
+    (fn [arg]
+        (cond
+          (string? arg)
+          (CatalogManager. arg)
+          (:files arg)
+          (doto (CatalogManager.)
+            (.setCatalogFiles (:files arg)))
+          (:catalog-properties arg)
+          (CatalogManager. (:catalog-properties arg))
+          (map? arg)
+          (CatalogManager.)
+          (instance? CatalogManager arg)
+          arg
+          :default (throw (Exception. (str "bad manager passed for catalog-resolver" arg))))));)
+
+(defn ^CatalogManager 
+      catalog-manager
+  [options]
+  (doto (allocate-catalog-manager options)
+    (.setUseStaticCatalog (or (:use-static-catalog options) false))
+    (.setAllowOasisXMLCatalogPI (or (:allow-oasis-xml-catalog-pi options) false))
+    (.setVerbosity (or (:verbosity options) 0))
+    (.setRelativeCatalogs (or (:relative-catalogs options) false))
+    
+    (.setUseStaticCatalog (or (:use-static-catalog options) false))))
+
+(defn ^CatalogResolver
+      catalog-resolver
+  [arg]
+  (if (nil? arg)
+    (CatalogResolver.)
+  (CatalogResolver. (catalog-manager arg))))
+
+
+
 
 (defn- java-prop-name
   [prop]
@@ -38,9 +78,17 @@
     (set-config-property! :line-numbering true)
   Lets errors bubble up."
   [^Processor proc prop value]
-  (let [prop  (java-prop-name prop)
-        ^String field (.get (.getField FeatureKeys prop) nil)]
-    (.setConfigurationProperty proc field value)))
+  (case prop
+    :catalog-options
+    (-> proc
+      .getUnderlyingConfiguration
+      .getParseOptions
+      (.setEntityResolver 
+        (catalog-resolver value)))
+    
+    (let [prop  (java-prop-name prop)
+         ^String field (.get (.getField FeatureKeys prop) nil)]
+     (.setConfigurationProperty proc field value))))
 
 (defn ^Processor 
   processor
@@ -49,14 +97,13 @@
   ([]
     (Processor. false))
   (^Processor [config]
-    (let [proc  (Processor. false)
+    (let [proc  (processor)
           configurator (fn [[k v]]
                          (set-config-property! proc k v))]
       (doall (map configurator config))
       proc))
   ([k v & {:as config}]
     (processor (assoc config k v ))))
-
 
 (defmulti ^Source xml-source class)
   (defmethod xml-source File
@@ -104,14 +151,16 @@
 ;; Public functions
 ;;
 
-(defn compile-xml
+(defn ^XdmNode
+	compile-xml
   "Compiles XML into an XdmNode, the Saxon 
   currency for in-memory tree representation. Takes
   File, URL, InputStream, Reader, or String." 
-  {:tag XdmNode}
   [^Processor proc x]
   (.. proc (newDocumentBuilder) 
                   (build (xml-source x))))
+
+
 
 (defn compile-xslt
   "Compiles stylesheet (from anything convertible to javax.
@@ -121,9 +170,8 @@
   (let    [cmplr  (.newXsltCompiler proc)
            exe    (.compile cmplr   (xml-source f))]
 
-    (fn [^XdmNode xml & params]
-      (let  [xdm-dest    (XdmDestination.)
-             transformer (.load exe)] ; created anew, is thread-safe
+    (fn [^XdmNode xml ^Destination dest & params]
+      (let  [transformer (.load exe)] ; created anew, is thread-safe
         (when params
           (let [prms  (first params)
                 ks    (keys prms)]
@@ -133,9 +181,13 @@
                 (XdmAtomicValue. (k prms))))))
         (doto transformer
           (.setInitialContextNode xml)
-          (.setDestination xdm-dest)
+          (.setDestination dest)
           (.transform))
-        (.getXdmNode xdm-dest)))))
+        dest))))
+
+(defn xdm-result
+  [^XdmDestination result]
+  (-> result .getXdmNode))
 
 (defn compile-xpath
   "Compiles XPath expression (given as string), returns
@@ -201,7 +253,6 @@
   "Returns XQuery string with nmspce declared as default element namespace."
   [nmspce q] `(format "declare default element namespace '%s'; %s" ~nmspce ~q))
 
-
 ;; Serializing
 
 (defn- write-value
@@ -234,6 +285,11 @@
       (write-value proc node (doto s (.setOutputWriter dest)))
       dest))
 
+(defn serializer
+  ([^Processor proc]
+    (-> proc .newSerializer))
+  ([^Processor proc ^Destination dest]
+    (-> proc (.newSerializer dest))))
 ;; Node functions
 
 (defn parent-node
