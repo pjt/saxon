@@ -1,5 +1,4 @@
-(defproject clojure-saxon "0.9.4"
+(defproject clojure-saxon "0.9.5"
             :description "Clojure wrapper for the Saxon XSLT and XQuery processor."
             :dependencies [[org.clojure/clojure "1.3.0"]
-                           [org.clojars.pjt/saxon9 "9.1.0.8"]
-                           [org.clojars.pjt/saxon9-s9api "9.1.0.8"]])
+                           [net.sf.saxon/Saxon-HE "9.5.0.1"]])
