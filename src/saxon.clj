@@ -13,7 +13,7 @@
         [clojure.string   :only (join)])
   (:import 
     java.net.URL
-    net.sf.saxon.FeatureKeys
+    net.sf.saxon.lib.FeatureKeys
     (java.io File InputStream OutputStream Reader StringReader Writer)
     (javax.xml.transform.stream StreamSource)
     (javax.xml.transform Source)
@@ -21,56 +21,115 @@
                         Serializer$Property XPathCompiler XPathSelector 
                         XdmDestination XdmValue XdmItem XdmNode XdmNodeKind 
                         XdmAtomicValue XQueryCompiler XQueryEvaluator QName)
-    (net.sf.saxon.om Navigator NodeInfo)))
+    org.apache.xml.resolver.CatalogManager
+    org.apache.xml.resolver.tools.CatalogResolver
+    (net.sf.saxon.om NodeInfo)  
+    (net.sf.saxon.tree.util Navigator)))
 
 ;;
 ;; Utilities
 ;;
+(def ^CatalogManager
+     allocate-catalog-manager
+  ;(memoize 
+    (fn [arg]
+        (cond
+          (string? arg)
+          (CatalogManager. arg)
+          (:files arg)
+          (doto (CatalogManager.)
+            (.setCatalogFiles (:files arg)))
+          (:catalog-properties arg)
+          (CatalogManager. (:catalog-properties arg))
+          (map? arg)
+          (CatalogManager.)
+          (instance? CatalogManager arg)
+          arg
+          :default (throw (Exception. (str "bad manager passed for catalog-resolver" arg))))));)
 
-(def ^{:tag Processor} 
-  proc
-  "Returns the Saxon Processor object, the thread-safe generator class for documents, 
-  stylesheets, & XPaths. Creates & defs the Processor if not already created."
-  (Processor. false))
+(defn ^CatalogManager 
+      catalog-manager
+  [options]
+  (doto (allocate-catalog-manager options)
+    (.setUseStaticCatalog (or (:use-static-catalog options) false))
+    (.setAllowOasisXMLCatalogPI (or (:allow-oasis-xml-catalog-pi options) false))
+    (.setVerbosity (or (:verbosity options) 0))
+    (.setRelativeCatalogs (or (:relative-catalogs options) false))
+    
+    (.setUseStaticCatalog (or (:use-static-catalog options) false))))
 
+(defn ^CatalogResolver
+      catalog-resolver
+  [arg]
+  (if (nil? arg)
+    (CatalogResolver.)
+  (CatalogResolver. (catalog-manager arg))))
+
+
+
+
+(defn- java-prop-name
+  [prop]
+  (-> (name prop) .toUpperCase (.replace "-" "_")))
 
 (defn set-config-property!
-  "Sets a configuration property on the Saxon Processor object. Takes keyword
+  "Set a configuration property on a Saxon Processor object. Takes keyword
   representing a net.sf.saxon.FeatureKeys field and the value to be set, e.g.
     (set-config-property! :line-numbering true)
   Lets errors bubble up."
-  [prop value]
-  (let [prop  (-> (name prop) .toUpperCase (.replace "-" "_"))
-        field (.get (.getField FeatureKeys prop) nil)]
-    (.setConfigurationProperty proc field value)))
+  [^Processor proc prop value]
+  (case prop
+    :catalog-options
+    (-> proc
+      .getUnderlyingConfiguration
+      .getParseOptions
+      (.setEntityResolver 
+        (catalog-resolver value)))
+    
+    (let [prop  (java-prop-name prop)
+         ^String field (.get (.getField FeatureKeys prop) nil)]
+     (.setConfigurationProperty proc field value))))
 
-
+(defn ^Processor 
+  processor
+  "Returns a Saxon Processor object, a thread-safe generator class for documents, 
+  stylesheets, & XPaths."
+  ([]
+    (Processor. false))
+  (^Processor [config]
+    (let [proc  (processor)
+          configurator (fn [[k v]]
+                         (set-config-property! proc k v))]
+      (doall (map configurator config))
+      proc))
+  ([k v & {:as config}]
+    (processor (assoc config k v ))))
 
 (defmulti ^Source xml-source class)
   (defmethod xml-source File
     [f]
-    (StreamSource. #^File f))
+    (StreamSource. ^File f))
   (defmethod xml-source InputStream
     [i]
-    (StreamSource. #^InputStream i))
+    (StreamSource. ^InputStream i))
   (defmethod xml-source URL
     [u]
-    (StreamSource. #^InputStream (.openStream #^URL u)))
+    (StreamSource. ^InputStream (.openStream ^URL u)))
   (defmethod xml-source Reader
     [r]
-    (StreamSource. #^Reader r))
+    (StreamSource. ^Reader r))
   (defmethod xml-source String
     [s]
-    (StreamSource. (StringReader. #^String s)))
+    (StreamSource. (StringReader. ^String s)))
   (defmethod xml-source XdmNode
     [nd]
-    (.asSource #^XdmNode nd))
+    (.asSource ^XdmNode nd))
 
 
 ;; Well, except this is public -- maybe doesn't need to be
 (defn atomic?
   "Returns true if XdmItem or a subclass (XdmAtomicValue, XdmNode) is an atomic value."
-  [#^XdmItem val]
+  [^XdmItem val]
   (.isAtomicValue val))
 
 (defn- unwrap-xdm-items
@@ -82,7 +141,7 @@
   as nodes."
   [sel]
   (let [result 
-          (map #(if (atomic? %) (.getValue #^XdmAtomicValue %) %)
+          (map #(if (atomic? %) (.getValue ^XdmAtomicValue %) %)
              sel)]
     (if (next result)
        result
@@ -92,26 +151,27 @@
 ;; Public functions
 ;;
 
-(defn compile-xml
+(defn ^XdmNode
+	compile-xml
   "Compiles XML into an XdmNode, the Saxon 
   currency for in-memory tree representation. Takes
   File, URL, InputStream, Reader, or String." 
-  {:tag XdmNode}
-  [x]
+  [^Processor proc x]
   (.. proc (newDocumentBuilder) 
                   (build (xml-source x))))
+
+
 
 (defn compile-xslt
   "Compiles stylesheet (from anything convertible to javax.
   xml.transform.Source), returns function that applies it to 
   compiled doc or node."
-  [f]
+  [^Processor proc f]
   (let    [cmplr  (.newXsltCompiler proc)
            exe    (.compile cmplr   (xml-source f))]
 
-    (fn [#^XdmNode xml & params]
-      (let  [xdm-dest    (XdmDestination.)
-             transformer (.load exe)] ; created anew, is thread-safe
+    (fn [^XdmNode xml ^Destination dest & params]
+      (let  [transformer (.load exe)] ; created anew, is thread-safe
         (when params
           (let [prms  (first params)
                 ks    (keys prms)]
@@ -121,21 +181,25 @@
                 (XdmAtomicValue. (k prms))))))
         (doto transformer
           (.setInitialContextNode xml)
-          (.setDestination xdm-dest)
+          (.setDestination dest)
           (.transform))
-        (.getXdmNode xdm-dest)))))
+        dest))))
+
+(defn xdm-result
+  [^XdmDestination result]
+  (-> result .getXdmNode))
 
 (defn compile-xpath
   "Compiles XPath expression (given as string), returns
   function that applies it to compiled doc or node. Takes 
   optional map of prefixes (as keywords) and namespace URIs."
-  [#^String xpath & ns-map]
+  [^Processor proc ^String xpath & ns-map]
   (let  [cmplr  (doto (.newXPathCompiler proc) 
                     (#(doseq [[pre uri] (first ns-map)]
                         (.declareNamespace ^XPathCompiler % (name pre) uri))))
          exe    (.compile cmplr xpath)]
 
-    (fn [#^XdmNode xml] 
+    (fn [^XdmNode xml] 
       (unwrap-xdm-items
         (doto (.load exe)
           (.setContextItem xml))))))
@@ -144,15 +208,15 @@
   "Compiles XQuery expression (given as string), returns
   function that applies it to compiled doc or node. Takes 
   optional map of prefixes (as keywords) and namespace URIs."
-  [#^String xquery & ns-map]
+  [^Processor proc ^String xquery & ns-map]
   (let  [cmplr  (doto (.newXQueryCompiler proc) 
                     (#(doseq [[pre uri] (first ns-map)]
                         (.declareNamespace ^XQueryCompiler % (name pre) uri))))
          exe    (.compile cmplr xquery)]
 
-    (fn [#^XdmNode xml] 
+    (fn [^XdmNode xml] 
       ; TODO add variable support
-      ;(.setExternalVariable #^Qname name #^XdmValue val)
+      ;(.setExternalVariable ^Qname name ^XdmValue val)
       (unwrap-xdm-items 
         (doto (.load exe)
           (.setContextItem xml))))))
@@ -182,46 +246,50 @@
 (defn query
   "Run query on node. Arity of two accepts (1) string or compiled query fn & (2) node;
   arity of three accepts (1) string query, (2) namespace map, & (3) node."
-  ([q nd] ((if (fn? q) q (compile-xquery q)) nd))
-  ([q nses nd] ((compile-xquery q nses) nd)))
+  ([^Processor proc q nd] ((if (fn? q) q (compile-xquery proc q)) nd))
+  ([^Processor proc q nses nd] ((compile-xquery proc q nses) nd)))
 
 (definline with-default-ns
   "Returns XQuery string with nmspce declared as default element namespace."
   [nmspce q] `(format "declare default element namespace '%s'; %s" ~nmspce ~q))
 
-
 ;; Serializing
 
 (defn- write-value
-  [#^XdmValue node #^Destination serializer]
+  [^Processor proc ^XdmValue node ^Destination serializer]
   (.writeXdmValue proc node serializer))
 
 (defn- set-props
-  [#^Serializer s props]
+  [^Serializer s props]
   (doseq [[prop value] props]
-    (let [prop (Serializer$Property/valueOf (-> (name prop) (.replace "-" "_") .toUpperCase))]
+    (let [prop (Serializer$Property/valueOf (java-prop-name prop))]
       (.setOutputProperty s prop value))))
 
-(defmulti serialize (fn [node dest & props] (class dest)))
+(defmulti serialize (fn [^Processor proc node dest & props] (class dest)))
   (defmethod serialize File
-    [node #^File dest & props]
+    [^Processor proc node ^File dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
-      (write-value node (doto s (.setOutputFile dest)))
+      (write-value proc node (doto s (.setOutputFile dest)))
       dest))
   (defmethod serialize OutputStream
-    [node #^OutputStream dest & props]
+    [^Processor proc node ^OutputStream dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
-      (write-value node (doto s (.setOutputStream dest)))
+      (write-value proc node (doto s (.setOutputStream dest)))
       dest))
   (defmethod serialize Writer
-    [node #^Writer dest & props]
+    [^Processor proc node ^Writer dest & props]
     (let [s (Serializer.)]
       (set-props s (first props))
-      (write-value node (doto s (.setOutputWriter dest)))
+      (write-value proc node (doto s (.setOutputWriter dest)))
       dest))
 
+(defn serializer
+  ([^Processor proc]
+    (-> proc .newSerializer))
+  ([^Processor proc ^Destination dest]
+    (-> proc (.newSerializer dest))))
 ;; Node functions
 
 (defn parent-node
@@ -261,7 +329,7 @@
   [^XdmNode nd]
   (Navigator/getPath (.getUnderlyingNode nd)))
 
-;(def #^{:private true} 
+;(def ^{:private true} 
 ;    axis-map
 ;        {:ancestor            Axis/ANCESTOR           
 ;         :ancestor-or-self    Axis/ANCESTOR_OR_SELF   
@@ -279,10 +347,10 @@
 ;
 ;(defn axis-seq
 ;   "Returns sequences of nodes on given axis."
-;   ([#^XdmNode nd axis]
-;    (.axisIterator nd #^Axis (axis-map axis)))
-;   ([#^XdmNode nd axis name]
-;    (.axisIterator nd #^Axis (axis-map axis) (QName. #^String name))))
+;   ([^XdmNode nd axis]
+;    (.axisIterator nd ^Axis (axis-map axis)))
+;   ([^XdmNode nd axis name]
+;    (.axisIterator nd ^Axis (axis-map axis) (QName. ^String name))))
 
 ; Node-kind predicates
 
